@@ -18,11 +18,11 @@ class Client extends Thread {
         try {
             socket = new DatagramSocket();
             socket.setSoTimeout(5000);
-            address = InetAddress.getByName("localhost");
-            clientId = generateRandomIntegerInRange(0, 65535);
-            sequenceId = generateRandomIntegerInRange(0, 65535);
-            value = generateRandomIntegerInRange(0, 65535);
-            nackCount = 0;
+            address = InetAddress.getByName(Constant.HOSTNAME);
+            clientId = generateRandomIntegerInRange();
+            sequenceId = generateRandomIntegerInRange();
+            value = generateRandomIntegerInRange();
+            nackCount = Constant.RAND_MIN_LIMIT;
         } catch (SocketException e) {
             e.printStackTrace();
         }
@@ -30,15 +30,15 @@ class Client extends Thread {
 
     public void run() {
         while (true) {
-            value = generateRandomIntegerInRange(0, 65535);
+            value = generateRandomIntegerInRange();
             sendEcho();
         }
     }
 
     private void sendEcho() {
         try {
-            DatagramPacket packet = sendPacketToServer();
-            packet = receiveNotificationFromServer(packet);
+            sendPacketToServer();
+            DatagramPacket packet = receiveNotificationFromServer();
             analyzeNotification(packet);
         } catch (SocketTimeoutException e) {
             handleSocketTimeOut();
@@ -50,9 +50,8 @@ class Client extends Thread {
     }
 
     private void handleSocketTimeOut() {
-        if (nackCount < 3) {
-            nackCount++;
-        } else {
+        nackCount++;
+        if (nackCount.equals(Constant.MAX_TRY)) {
             nackCount = 0;
             generateLostFile();
             sequenceId++;
@@ -62,21 +61,21 @@ class Client extends Thread {
 
     private void analyzeNotification(DatagramPacket packet) throws InterruptedException {
         ByteBuffer wrapped = ByteBuffer.wrap(packet.getData());
-        if (wrapped.getInt(0) == clientId && wrapped.getInt(4) == sequenceId) {
-            if (wrapped.get(8) == 0) {
-                if (nackCount < 3) {
+        if (wrapped.getInt(Constant.CLIENT_INDEX) == clientId && wrapped.getInt(Constant.SEQUENCE_INDEX) == sequenceId) {
+            if (wrapped.get(Constant.NOTIFICATION_INDEX) == 0) {
+                if (nackCount < Constant.MAX_TRY) {
                     nackCount++;
                     sendEcho();
                 } else {
                     nackCount = 0;
                     generateLostFile();
                     sequenceId++;
-                    sleep(100);
+                    sleep(Constant.SLEEP_TIME);
                     sendEcho();
                 }
             } else {
                 sequenceId++;
-                sleep(100);
+                sleep(Constant.SLEEP_TIME);
                 sendEcho();
             }
         }
@@ -84,7 +83,7 @@ class Client extends Thread {
 
     private void generateLostFile() {
         try {
-            String fileName = clientId + ".lost.txt";
+            String fileName = clientId + Constant.LOST_FILE_EXTENSION;
             FileWriter fileWriter;
             fileWriter = new FileWriter(fileName, true);
             BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
@@ -102,25 +101,25 @@ class Client extends Thread {
     private DatagramPacket sendPacketToServer() throws IOException {
         ByteBuffer byteBuffer = generateClientPacket(clientId, sequenceId, value);
         byte[] senderBuf = byteBuffer.array();
-        DatagramPacket packet = new DatagramPacket(senderBuf, senderBuf.length, address, 4445);
+        DatagramPacket packet = new DatagramPacket(senderBuf, senderBuf.length, address, Constant.PORT);
         socket.send(packet);
         return packet;
     }
 
-    private DatagramPacket receiveNotificationFromServer(DatagramPacket packet) throws IOException {
-        byte[] receiverBuf = new byte[9];
-        packet = new DatagramPacket(receiverBuf, receiverBuf.length);
+    private DatagramPacket receiveNotificationFromServer() throws IOException {
+        byte[] receiverBuf = new byte[Constant.NOTIFY_MESSAGE_SIZE];
+        DatagramPacket packet = new DatagramPacket(receiverBuf, receiverBuf.length);
         socket.receive(packet);
         return packet;
     }
 
     private ByteBuffer generateClientPacket(int clientId, int sequenceId, int value) {
-        byte[] clientIdBytes = ByteBuffer.allocate(4).putInt(clientId).array();
-        byte[] sequenceIdBytes = ByteBuffer.allocate(4).putInt(sequenceId).array();
-        byte[] valueBytes = ByteBuffer.allocate(4).putInt(value).array();
+        byte[] clientIdBytes = ByteBuffer.allocate(Constant.CLIENT_SIZE).putInt(clientId).array();
+        byte[] sequenceIdBytes = ByteBuffer.allocate(Constant.SEQUENCE_SIZE).putInt(sequenceId).array();
+        byte[] valueBytes = ByteBuffer.allocate(Constant.VALUE_SIZE).putInt(value).array();
         byte[] checkSumBytes = calculateChecksum(clientIdBytes, sequenceIdBytes, valueBytes);
 
-        ByteBuffer byteBuffer = ByteBuffer.allocate(20);
+        ByteBuffer byteBuffer = ByteBuffer.allocate(Constant.MESSAGE_SIZE);
         byteBuffer.put(clientIdBytes);
         byteBuffer.put(sequenceIdBytes);
         byteBuffer.put(valueBytes);
@@ -134,21 +133,20 @@ class Client extends Thread {
         checksum.update(clientIdBytes);
         checksum.update(sequenceIdBytes);
         checksum.update(valueBytes);
-        return ByteBuffer.allocate(8).putLong(checksum.getValue()).array();
+        return ByteBuffer.allocate(Constant.CHECKSUM_SIZE).putLong(checksum.getValue()).array();
     }
 
     void close() {
         socket.close();
     }
 
-    private static int generateRandomIntegerInRange(int min, int max) {
-
-        if (min >= max) {
+    private static int generateRandomIntegerInRange() {
+        if (Constant.RAND_MIN_LIMIT >= Constant.RAND_MAX_LIMIT) {
             throw new IllegalArgumentException("max must be greater than min");
         }
 
         Random r = new Random();
-        return r.nextInt((max - min) + 1) + min;
+        return r.nextInt((Constant.RAND_MAX_LIMIT - Constant.RAND_MIN_LIMIT) + 1) + Constant.RAND_MIN_LIMIT;
     }
 
 
