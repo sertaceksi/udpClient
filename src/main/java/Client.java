@@ -55,7 +55,6 @@ class Client extends Thread {
             nackCount = 0;
             generateLostFile();
             sequenceId++;
-            sendEcho();
         }
     }
 
@@ -65,18 +64,15 @@ class Client extends Thread {
             if (wrapped.get(Constant.NOTIFICATION_INDEX) == 0) {
                 if (nackCount < Constant.MAX_TRY) {
                     nackCount++;
-                    sendEcho();
                 } else {
                     nackCount = 0;
                     generateLostFile();
                     sequenceId++;
                     sleep(Constant.SLEEP_TIME);
-                    sendEcho();
                 }
             } else {
                 sequenceId++;
                 sleep(Constant.SLEEP_TIME);
-                sendEcho();
             }
         }
     }
@@ -95,15 +91,14 @@ class Client extends Thread {
     }
 
     private String newLine() {
-        return sequenceId + "," + value + "\n";
+        return "\n" + sequenceId + "," + value;
     }
 
-    private DatagramPacket sendPacketToServer() throws IOException {
+    private void sendPacketToServer() throws IOException {
         ByteBuffer byteBuffer = generateClientPacket(clientId, sequenceId, value);
         byte[] senderBuf = byteBuffer.array();
         DatagramPacket packet = new DatagramPacket(senderBuf, senderBuf.length, address, Constant.PORT);
         socket.send(packet);
-        return packet;
     }
 
     private DatagramPacket receiveNotificationFromServer() throws IOException {
@@ -136,9 +131,6 @@ class Client extends Thread {
         return ByteBuffer.allocate(Constant.CHECKSUM_SIZE).putLong(checksum.getValue()).array();
     }
 
-    void close() {
-        socket.close();
-    }
 
     private static int generateRandomIntegerInRange() {
         if (Constant.RAND_MIN_LIMIT >= Constant.RAND_MAX_LIMIT) {

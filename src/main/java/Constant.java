@@ -3,7 +3,7 @@ class Constant {
     final static Integer PORT = 4445;
     final static Integer RAND_MAX_LIMIT = 65535;
     final static Integer RAND_MIN_LIMIT = 0;
-    final static Integer SLEEP_TIME = 100;
+    final static Integer SLEEP_TIME = 50;
     final static Integer CLIENT_INDEX = 0;
     final static Integer SEQUENCE_INDEX = 4;
     final static Integer CLIENT_SIZE = 4;
