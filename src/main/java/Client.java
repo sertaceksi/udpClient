@@ -30,7 +30,9 @@ class Client extends Thread {
 
     public void run() {
         while (true) {
-            value = generateRandomIntegerInRange();
+            if(nackCount == 0) {
+                value = generateRandomIntegerInRange();
+            }
             sendEcho();
         }
     }

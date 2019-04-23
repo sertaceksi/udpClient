@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="udpclient:jar">
+    <output-path>$PROJECT_DIR$/target</output-path>
+    <root id="archive" name="udpclient.jar">
+      <element id="module-output" name="udpclient" />
+    </root>
+  </artifact>
+</component>
